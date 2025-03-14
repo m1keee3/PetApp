@@ -1,12 +1,23 @@
 package ru.skirda;
 
+import ru.skirda.Presentation.Console.ScenarioRunner;
+import ru.skirda.config.DependencyConfig;
+
+/**
+ * Main class
+ */
 public class Main {
+    /**
+     * Устанавливает зависимости используя DependencyConfig
+     * Запускает цикл операций
+     * @param args
+     */
     public static void main(String[] args) {
+        ScenarioRunner runner = DependencyConfig.configure();
 
-        System.out.println("Hello and welcome!");
-
-        for (int i = 1; i <= 5; i++) {
-            System.out.println("i = " + i * 2);
+        while (true) {
+            runner.run();
         }
+
     }
 }
