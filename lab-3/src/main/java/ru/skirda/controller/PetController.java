@@ -7,14 +7,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import ru.skirda.dto.PetDto;
-import ru.skirda.entities.Owner;
 import ru.skirda.entities.Pet;
-import ru.skirda.entities.PetColor;
 import ru.skirda.service.PetService;
 
-import java.time.LocalDate;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/pets")
@@ -42,37 +41,37 @@ public class PetController {
     }
 
     @PostMapping
-    public ResponseEntity<PetDto> createPet(@RequestBody PetDto petDto) {
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<PetDto> createPet(@RequestBody PetDto petDto, Principal principal) {
         logger.info("Create pet: {}", petDto);
-        Pet pet = new Pet().setName(petDto.name())
-                .setBirthDate(petDto.birthDate())
-                .setBreed(petDto.breed())
-                .setColor(PetColor.valueOf(petDto.color().toUpperCase()))
-                .setOwner(new Owner(petDto.ownerId(), "", LocalDate.now()));
-        Pet created = petService.createPet(pet);
-        logger.info("Pet with id: {} created", created.getId());
-        return new ResponseEntity<>(new PetDto(created.getId(), created.getName(),
-                created.getBreed(), created.getColor().toString(),
-                created.getBirthDate(), created.getOwner().getId()),
-                HttpStatus.CREATED);
+
+        Pet createdPet = petService.createPet(petDto, principal.getName());
+
+        logger.info("Pet with id: {} created", createdPet.getId());
+        return new ResponseEntity<>(
+                new PetDto(createdPet.getId(), createdPet.getName(), createdPet.getBreed(), createdPet.getColor().toString(), createdPet.getBirthDate(), createdPet.getOwner().getId()),
+                HttpStatus.CREATED
+        );
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PetDto> updatePet(@PathVariable("id") Long id, @RequestBody PetDto petDto) {
-        logger.info("Update pet with id: {}, new data: {}", id, petDto);
-        Pet updated = petService.updatePet(id, petDto);
-        logger.info("pet updated with id: {}", updated.getId());
-        return new ResponseEntity<>(new PetDto(updated.getId(), updated.getName(),
-                updated.getBreed(), updated.getColor().toString(),
-                updated.getBirthDate(), updated.getOwner().getId()),
-                HttpStatus.OK);
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<PetDto> updatePet(@PathVariable("id") Long id, @RequestBody PetDto petDto, Principal principal) {
+        logger.info("Update pet request for id={} by '{}'", id, principal.getName());
+
+        Pet updated = petService.updatePet(id, petDto, principal.getName());
+
+        return ResponseEntity.ok(new PetDto(updated.getId(), updated.getName(), updated.getBreed(), updated.getColor().toString(), updated.getBirthDate(), updated.getOwner().getId()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePet(@PathVariable("id") Long id) {
-        logger.info("Delete pet with id: {}", id);
-        petService.deletePet(id);
-        logger.info("Pet with id: {} deleted ", id);
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<Void> deletePet(@PathVariable("id") Long id, Principal principal) {
+        logger.info("Delete pet request for id={} by '{}'", id, principal.getName());
+
+        petService.deletePet(id, principal.getName());
+
+        logger.info("Pet with id={} deleted by '{}'", id, principal.getName());
         return ResponseEntity.noContent().build();
     }
 
