@@ -25,6 +25,7 @@ public abstract class TestContainersConfig {
     protected static EntityManagerFactory entityManagerFactory;
     protected EntityManager entityManager;
 
+
     @BeforeAll
     void setup() {
         System.setProperty("DB_URL", postgres.getJdbcUrl());
