@@ -7,10 +7,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import ru.skirda.dto.OwnerDto;
 import ru.skirda.entities.Owner;
 import ru.skirda.service.OwnerService;
+
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/owners")
@@ -37,13 +40,13 @@ public class OwnerController {
     }
 
     @PostMapping
-    public ResponseEntity<OwnerDto> createOwner(@RequestBody OwnerDto ownerDto) {
-        logger.info("Create owner: {}", ownerDto);
-        Owner owner = new Owner()
-                .setName(ownerDto.name())
-                .setBirthDate(ownerDto.birthDate());
-        Owner created = ownerService.createOwner(owner);
-        logger.info("Owner with id: {} created", created.getId());
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<OwnerDto> createOwner(@RequestBody OwnerDto ownerDto, Principal principal) {
+        logger.info("Create owner request from user '{}'", principal.getName());
+
+        Owner created = ownerService.createOwner(ownerDto, principal.getName());
+
+        logger.info("Owner with id: {} created for user '{}'", created.getId(), principal.getName());
         return new ResponseEntity<>(
                 new OwnerDto(created.getId(), created.getName(), created.getBirthDate()),
                 HttpStatus.CREATED
@@ -51,18 +54,23 @@ public class OwnerController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OwnerDto> updateOwner(@PathVariable("id") Long id, @RequestBody OwnerDto ownerDto) {
-        logger.info("Update owner with id: {}, new data: {}", id, ownerDto);
-        Owner updated = ownerService.updateOwner(id, ownerDto);
-        logger.info("Owner updated with id: {}", updated.getId());
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<OwnerDto> updateOwner(@PathVariable("id") Long id, @RequestBody OwnerDto ownerDto, Principal principal) {
+        logger.info("Update owner request for id={} by '{}'", id, principal.getName());
+
+        Owner updated = ownerService.updateOwner(id, ownerDto, principal.getName());
+
         return ResponseEntity.ok(new OwnerDto(updated.getId(), updated.getName(), updated.getBirthDate()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOwner(@PathVariable("id") Long id) {
-        logger.info("Delete owner with id: {}", id);
-        ownerService.deleteOwner(id);
-        logger.info("Owner with id: {} deleted ", id);
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<Void> deleteOwner(@PathVariable("id") Long id, Principal principal) {
+        logger.info("Delete owner request for id={} by '{}'", id, principal.getName());
+
+        ownerService.deleteOwner(id, principal.getName());
+
+        logger.info("Owner with id={} deleted by '{}'", id, principal.getName());
         return ResponseEntity.noContent().build();
     }
 }
