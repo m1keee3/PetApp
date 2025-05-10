@@ -18,6 +18,10 @@ public class Owner {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @OneToOne
+    @JoinColumn(name = "user_id", unique = true, nullable = false)
+    private User user;
+
     private String name;
     private LocalDate birthDate;
 
@@ -25,6 +29,7 @@ public class Owner {
     private List<Pet> pets = new ArrayList<>();
 
     public Owner(Long id, String name, LocalDate birthDate) {
+        this.id = id;
         this.name = name;
         this.birthDate = birthDate;
     }
