@@ -19,9 +19,12 @@ public class OwnerController {
     private final KafkaService kafkaService;
 
     @GetMapping("/{id}")
-    public CompletableFuture<OwnerDto> getOwner(@PathVariable("id") Long id) {
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public CompletableFuture<OwnerDto> getOwner(@PathVariable("id") Long id,
+                                                @AuthenticationPrincipal CustomUserDetails userDetails) {
         OwnerDto request = new OwnerDto();
         request.setId(id);
+        request.setUserId(userDetails.getId());
         return kafkaService.sendRequest("owner-requests", "getOwnerById", request, OwnerDto.class);
     }
 

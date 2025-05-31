@@ -13,8 +13,6 @@ import ru.skirda.dto.OwnerDto;
 import ru.skirda.model.Owner;
 import ru.skirda.repository.OwnerRepository;
 
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
 public class OwnerCommandHandler {
@@ -29,7 +27,7 @@ public class OwnerCommandHandler {
         try {
             switch (command) {
                 case "createOwner" -> createOwner(convert(data), message.getCorrelationId());
-                case "getOwnerById" -> getOwnerById(((Map<?, ?>) data).get("id"), message.getCorrelationId());
+                case "getOwnerById" -> getOwnerById(data, message.getCorrelationId());
                 case "updateOwner" -> updateOwner(convert(data), message.getCorrelationId());
                 case "deleteOwner" -> deleteOwner(convert(data), message.getCorrelationId());
                 case "getAllOwners" -> getAllOwners(convert(data), message.getCorrelationId());
@@ -50,18 +48,28 @@ public class OwnerCommandHandler {
         responseService.sendResponse(ownerToDto(owner), correlationId);
     }
 
-    private void getOwnerById(Object idRaw, String correlationId) {
-        Long id = Long.valueOf(idRaw.toString());
+    private void getOwnerById(Object raw, String correlationId) {
+        OwnerDto dto = mapper.convertValue(raw, OwnerDto.class);
+        Long id = dto.getId();
+        Long requesterUserId = dto.getUserId();
+
         repository.findById(id)
-                .ifPresentOrElse(
-                        owner -> responseService.sendResponse(ownerToDto(owner), correlationId),
-                        () -> responseService.sendError(correlationId, "Owner not found with id: " + id)
-                );
+                .ifPresentOrElse(owner -> {
+                    if (!owner.getUserId().equals(requesterUserId)) {
+                        responseService.sendError(correlationId, "Permission denied");
+                    } else {
+                        responseService.sendResponse(ownerToDto(owner), correlationId);
+                    }
+                }, () -> responseService.sendError(correlationId, "Owner not found with id: " + id));
     }
 
     private void updateOwner(OwnerDto dto, String correlationId) {
         repository.findById(dto.getId())
                 .ifPresentOrElse(owner -> {
+                    if (!owner.getUserId().equals(dto.getUserId())) {
+                        responseService.sendError(correlationId, "Permission denied");
+                        return;
+                    }
                     owner.setName(dto.getName());
                     owner.setBirthDate(dto.getBirthDate());
                     repository.save(owner);

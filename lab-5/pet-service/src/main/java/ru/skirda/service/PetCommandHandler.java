@@ -11,8 +11,6 @@ import ru.skirda.dto.PetDto;
 import ru.skirda.model.Pet;
 import ru.skirda.repository.PetRepository;
 
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
 public class PetCommandHandler {
@@ -27,7 +25,7 @@ public class PetCommandHandler {
         try {
             switch (command) {
                 case "createPet" -> createPet(convert(raw), message.getCorrelationId());
-                case "getPetById" -> getPetById(((Map<?, ?>) raw).get("id"), message.getCorrelationId());
+                case "getPetById" -> getPetById(convert(raw), message.getCorrelationId());
                 case "updatePet" -> updatePet(convert(raw), message.getCorrelationId());
                 case "deletePet" -> deletePet(convert(raw), message.getCorrelationId());
                 default -> responseService.sendError(message.getCorrelationId(), "Unknown command: " + command);
@@ -47,13 +45,18 @@ public class PetCommandHandler {
         responseService.sendResponse(petToDto(pet), correlationId);
     }
 
-    private void getPetById(Object idRaw, String correlationId) {
-        Long id = Long.valueOf(idRaw.toString());
+    private void getPetById(PetDto dto, String correlationId) {
+        Long id = dto.getId();
+        Long requesterOwnerId = dto.getOwnerId();
+
         repository.findById(id)
-                .ifPresentOrElse(
-                        pet -> responseService.sendResponse(petToDto(pet), correlationId),
-                        () -> responseService.sendError(correlationId, "Pet not found with id: " + id)
-                );
+                .ifPresentOrElse(pet -> {
+                    if (!pet.getOwnerId().equals(requesterOwnerId)) {
+                        responseService.sendError(correlationId, "Permission denied");
+                    } else {
+                        responseService.sendResponse(petToDto(pet), correlationId);
+                    }
+                }, () -> responseService.sendError(correlationId, "Pet not found with id: " + id));
     }
 
     private void updatePet(PetDto dto, String correlationId) {

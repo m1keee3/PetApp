@@ -19,9 +19,12 @@ public class PetController {
     private final KafkaService kafkaService;
 
     @GetMapping("/{id}")
-    public CompletableFuture<PetDto> getPet(@PathVariable("id") Long id) {
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public CompletableFuture<PetDto> getPet(@PathVariable("id") Long id,
+                                            @AuthenticationPrincipal CustomUserDetails userDetails) {
         PetDto request = new PetDto();
         request.setId(id);
+        request.setOwnerId(userDetails.getId());
         return kafkaService.sendRequest("pet-requests", "getPetById", request, PetDto.class);
     }
 

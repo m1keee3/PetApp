@@ -2,9 +2,11 @@ package ru.skirda.gateway.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import ru.skirda.dto.KafkaMessage;
 
 import java.util.Map;
@@ -38,24 +40,23 @@ public class KafkaService {
         return future.thenApply(obj -> objectMapper.convertValue(obj, responseType));
     }
 
-    @KafkaListener(topics = "owner-responses")
-    public void handleOwnerResponse(KafkaMessage message) {
-        handleResponse(message);
-    }
-
-    @KafkaListener(topics = "pet-responses")
-    public void handlePetResponse(KafkaMessage message) {
-        handleResponse(message);
-    }
-
-    private void handleResponse(KafkaMessage message) {
+    @KafkaListener(topics = {"owner-responses", "pet-responses"})
+    public void handleKafkaResponse(KafkaMessage message) {
         CompletableFuture<Object> future = pendingRequests.remove(message.getCorrelationId());
-        if (future != null) {
-            if (message.getError() != null) {
-                future.completeExceptionally(new RuntimeException(message.getError()));
+        if (future == null) return;
+
+        if (message.getError() != null) {
+            String error = message.getError();
+
+            if (error.equalsIgnoreCase("Permission denied")) {
+                future.completeExceptionally(new ResponseStatusException(HttpStatus.FORBIDDEN, error));
+            } else if (error.toLowerCase().contains("not found")) {
+                future.completeExceptionally(new ResponseStatusException(HttpStatus.NOT_FOUND, error));
             } else {
-                future.complete(message.getData());
+                future.completeExceptionally(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, error));
             }
+        } else {
+            future.complete(message.getData());
         }
     }
 }
