@@ -54,7 +54,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
-                    <mainClass>ru.skirda.Main</mainClass>
+                    <mainClass>ru.skirda.GatewayApp</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -65,7 +65,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>ru.skirda.Main</mainClass>
+                            <mainClass>ru.skirda.GatewayApp</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
